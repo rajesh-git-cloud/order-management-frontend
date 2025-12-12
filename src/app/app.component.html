@@ -1,0 +1,13 @@
+<div class="min-h-screen bg-gray-100">
+  <nav class="bg-white shadow p-4 flex justify-between items-center">
+    <div class="font-bold text-xl">Order Management</div>
+    <div *ngIf="auth.isLoggedIn()">
+      <button class="bg-red-500 text-white px-3 py-1 rounded" (click)="logout()">Logout</button>
+    </div>
+  </nav>
+  <main class="p-4">
+    <router-outlet></router-outlet>
+  </main>
+</div>
+    
+

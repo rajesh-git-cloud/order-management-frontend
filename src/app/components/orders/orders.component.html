@@ -1,0 +1,119 @@
+<div class="p-6 space-y-6 bg-gray-50 min-h-screen">
+  <div class="flex flex-wrap gap-3 items-center justify-between mb-4">
+    <div class="flex flex-wrap gap-2">
+      <input type="text" placeholder="Search..." [(ngModel)]="search" (input)="loadOrders()" 
+             class="border p-2 rounded shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none" [disabled]="loading" />
+      <input type="text" placeholder="Customer..." [(ngModel)]="customerFilter" (input)="loadOrders()" 
+             class="border p-2 rounded shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none" [disabled]="loading" />
+      <div class="relative status-dropdown">
+        <button class="border p-2 rounded w-52 flex justify-between items-center shadow-sm hover:bg-gray-100"
+                (click)="toggleStatusDropdown()" [disabled]="loading">
+          Status Filter <span class="ml-2">&#9662;</span>
+        </button>
+        <div *ngIf="statusDropdownOpen" 
+             class="absolute z-10 mt-1 bg-white border rounded shadow-lg w-52 p-3 max-h-60 overflow-auto">
+          <div *ngFor="let status of statusOptions" class="flex items-center gap-2 py-1">
+            <input type="checkbox" [checked]="statusFilter.includes(status)" (change)="toggleStatus(status)" [disabled]="loading" />
+            <label>{{ status }}</label>
+          </div>
+          <input type="text" placeholder="Custom status..." [(ngModel)]="customStatusFilter" 
+                 (input)="loadOrders()" class="border p-1 rounded mt-2 w-full focus:ring-2 focus:ring-blue-400 focus:outline-none" [disabled]="loading" />
+        </div>
+      </div>
+      <button class="bg-gray-200 px-3 py-2 rounded shadow hover:bg-gray-300" (click)="clearFilters()" [disabled]="loading">Clear Filters</button>
+    </div>
+    <button class="bg-green-500 text-white px-3 py-2 rounded shadow hover:bg-green-600" (click)="openAddDialog()" [disabled]="loading">Add Order</button>
+  </div>
+
+  <div *ngIf="loading" class="flex justify-center py-6">
+    <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12"></div>
+  </div>
+
+  <div class="overflow-x-auto bg-white rounded shadow border relative">
+    <table *ngIf="!loading" class="min-w-full divide-y divide-gray-200 text-left">
+      <thead class="bg-gray-100">
+        <tr>
+          <th (click)="onSort('orderNo')" class="px-4 py-3 cursor-pointer select-none">
+            Order No <span>{{ sortBy === 'orderNo' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕' }}</span>
+          </th>
+          <th (click)="onSort('customerName')" class="px-4 py-3 cursor-pointer select-none">
+            Customer <span>{{ sortBy === 'customerName' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕' }}</span>
+          </th>
+          <th class="px-4 py-3">Status</th>
+          <th (click)="onSort('amount')" class="px-4 py-3 cursor-pointer select-none">
+            Amount <span>{{ sortBy === 'amount' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕' }}</span>
+          </th>
+          <th (click)="onSort('createdAt')" class="px-4 py-3 cursor-pointer select-none">
+            Created At <span>{{ sortBy === 'createdAt' ? (sortDirection === 'asc' ? '↑' : '↓') : '↕' }}</span>
+          </th>
+          <th class="px-4 py-3">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-200">
+        <tr *ngFor="let order of orders" class="hover:bg-gray-50 transition">
+          <td class="px-4 py-2">{{ order.orderNo }}</td>
+          <td class="px-4 py-2">{{ order.customerName }}</td>
+          <td class="px-4 py-2">
+            <span class="px-2 py-1 rounded-full text-sm font-semibold" 
+                  [ngClass]="{
+                    'bg-green-100 text-green-800': order.status === 'COMPLETED',
+                    'bg-yellow-100 text-yellow-800': order.status === 'INPROGRESS',
+                    'bg-blue-100 text-blue-800': order.status === 'OPEN',
+                    'bg-gray-100 text-gray-800': order.status === 'PENDING',
+                    'bg-red-100 text-red-800': order.status === 'CANCELLED'
+                  }">{{ order.status }}</span>
+          </td>
+          <td class="px-4 py-2">{{ order.amount | currency }}</td>
+          <td class="px-4 py-2">{{ order.createdAt | date:'short' }}</td>
+          <td class="px-4 py-2 flex gap-2">
+            <button class="bg-yellow-500 text-white px-2 py-1 rounded shadow hover:bg-yellow-600" 
+                    (click)="openEditDialog(order)" [disabled]="loading">Edit</button>
+            <button class="bg-red-500 text-white px-2 py-1 rounded shadow hover:bg-red-600" 
+                    (click)="onDelete(order.id)" [disabled]="loading">Delete</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <div *ngIf="!loading && orders.length === 0" class="p-4 text-center text-gray-500">No orders found.</div>
+  </div>
+
+  <div class="flex flex-wrap justify-between items-center mt-4 gap-2">
+    <div class="flex gap-2 items-center">
+      <button (click)="changePage(page-1)" [disabled]="page===1 || loading" class="px-3 py-1 border rounded hover:bg-gray-100">Prev</button>
+      <span class="text-gray-700">Page {{ page }} / {{ totalPages }}</span>
+      <button (click)="changePage(page+1)" [disabled]="page*pageSize >= total || loading" class="px-3 py-1 border rounded hover:bg-gray-100">Next</button>
+    </div>
+    <select [(ngModel)]="pageSize" (change)="loadOrders()" class="border p-1 rounded shadow-sm" [disabled]="loading">
+      <option [value]="10">10</option>
+      <option [value]="20">20</option>
+      <option [value]="50">50</option>
+      <option [value]="100">100</option>
+    </select>
+  </div>
+
+  <div *ngIf="dialogOpen" class="fixed inset-0 bg-black bg-opacity-30 flex justify-center items-center z-50">
+    <div class="bg-white p-6 rounded-lg w-96 shadow-lg relative">
+      <h3 class="text-xl font-bold mb-4">{{ editingOrder ? 'Edit Order' : 'Add Order' }}</h3>
+
+      <div class="space-y-3">
+        <input type="text" placeholder="Order No" [(ngModel)]="dialogOrder.orderNo" 
+               class="border p-2 rounded w-full focus:ring-2 focus:ring-blue-400 focus:outline-none" [disabled]="loading" />
+        <input type="text" placeholder="Customer" [(ngModel)]="dialogOrder.customerName" 
+               class="border p-2 rounded w-full focus:ring-2 focus:ring-blue-400 focus:outline-none" [disabled]="loading" />
+        <select [(ngModel)]="dialogOrder.status" class="border p-2 rounded w-full focus:ring-2 focus:ring-blue-400 focus:outline-none" [disabled]="loading">
+          <option *ngFor="let status of statusOptions" [value]="status">{{ status }}</option>
+        </select>
+        <input type="number" placeholder="Amount" [(ngModel)]="dialogOrder.amount" 
+               class="border p-2 rounded w-full focus:ring-2 focus:ring-blue-400 focus:outline-none" [disabled]="loading" />
+      </div>
+
+      <div class="flex justify-end gap-2 mt-4">
+        <button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" (click)="closeDialog()" [disabled]="loading">Cancel</button>
+        <button class="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 flex items-center gap-2" (click)="saveOrder()" [disabled]="loading">
+          <span *ngIf="loading" class="loader ease-linear rounded-full border-2 border-t-2 border-white h-4 w-4"></span>
+          {{ editingOrder ? 'Update' : 'Add' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
